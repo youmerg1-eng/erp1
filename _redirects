@@ -1,0 +1,14 @@
+# Netlify 리다이렉트 — 편의 URL 단축
+
+# 메인 ERP
+/erp              /영업관리_ERP.html      200
+/erp/*            /영업관리_ERP.html      200
+/login            /영업관리_ERP.html      200
+/dashboard        /영업관리_ERP.html      200
+
+# 가이드 문서
+/guide            /보안_설치가이드.md     200
+/multi            /다중접속_설치가이드.md  200
+
+# 모든 미정의 경로 → 메인 ERP (SPA-like)
+/*                /영업관리_ERP.html      200

@@ -1,0 +1,38 @@
+{
+  "name": "바로 ERP",
+  "short_name": "바로ERP",
+  "description": "태양광 모듈 영업관리 ERP — 모바일 바코드 스캔 지원",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a1929",
+  "theme_color": "#1a1a2e",
+  "lang": "ko",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjI4IiBmaWxsPSIjMWExYTJlIi8+PHRleHQgeD0iOTYiIHk9IjEyMCIgZm9udC1zaXplPSI4NCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+UkDwvdGV4dD48L3N2Zz4=",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9Ijc2IiBmaWxsPSIjMWExYTJlIi8+PHRleHQgeD0iMjU2IiB5PSIzMjAiIGZvbnQtc2l6ZT0iMjI0IiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5SQPC90ZXh0Pjwvc3ZnPg==",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "바코드 스캔",
+      "short_name": "스캔",
+      "description": "모바일 카메라로 바코드 스캔",
+      "url": "/?action=barcode"
+    },
+    {
+      "name": "대시보드",
+      "url": "/?tab=dashboard"
+    }
+  ]
+}

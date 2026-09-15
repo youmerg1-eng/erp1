@@ -1,0 +1,20 @@
+# Netlify 헤더 (netlify.toml 우선, 이건 백업/보강용)
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/영업관리_ERP.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-cache
+
+/index.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-cache
+
+/*.js
+  Content-Type: application/javascript; charset=utf-8
+
+/*.css
+  Content-Type: text/css; charset=utf-8
