@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영업관리 ERP</title>
+<!-- ★ 2026-05-13 보안 헤더 강화 -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<meta http-equiv="Permissions-Policy" content="camera=*, microphone=(), geolocation=()">
+<meta name="robots" content="noindex, nofollow">
+<!-- ★ 2026-05-13 PWA — 홈 화면 추가 + 바코드 스캐너용 카메라 권한 -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="바로ERP">
+<link rel="stylesheet" href="영업관리_ERP_styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ===== 보조 클래스 (styles.css 보강) ===== */
+
+/* 페이지 제목 */
+.page-title{font-size:1.5em;font-weight:800;color:#1a1a2e;margin-bottom:4px;letter-spacing:-0.5px;}
+.page-sub{font-size:0.85em;color:#888;margin-bottom:18px;}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+
+/* ===== KPI 그리드 (그라데이션 카드) ===== */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;}
+.kpi{background:white;border-radius:14px;padding:18px 20px;box-shadow:0 4px 14px rgba(0,0,0,0.06);position:relative;overflow:hidden;transition:all 0.2s;}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,0.10);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#3498db,#5dade2);}
+.kpi.kpi-success::before{background:linear-gradient(90deg,#27ae60,#2ecc71);}
+.kpi.kpi-warning::before{background:linear-gradient(90deg,#f39c12,#f1c40f);}
+.kpi.kpi-danger::before{background:linear-gradient(90deg,#e74c3c,#ec7063);}
+.kpi.kpi-purple::before{background:linear-gradient(90deg,#9b59b6,#bb8fce);}
+.kpi.kpi-dark::before{background:linear-gradient(90deg,#1a1a2e,#16213e);}
+.kpi-icon{position:absolute;right:14px;top:14px;font-size:1.6em;opacity:0.18;}
+.kpi-label{font-size:0.78em;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:8px;}
+.kpi-value{font-size:1.9em;font-weight:900;color:#1a1a2e;line-height:1;letter-spacing:-1px;}
+.kpi-sub{font-size:0.78em;color:#888;margin-top:6px;}
+.kpi-trend{display:inline-block;margin-left:6px;font-size:0.7em;padding:2px 6px;border-radius:8px;font-weight:700;}
+.kpi-trend.up{background:#d4edda;color:#155724;}
+.kpi-trend.down{background:#fee;color:#c00;}
+
+/* ===== 카드 ===== */
+.card{background:white;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:18px;overflow:hidden;transition:box-shadow 0.2s;}
+.card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.08);}
+.card-head{padding:14px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;}
+.card-head h3{font-size:0.95em;font-weight:700;color:#333;padding:0;border:none;}
+.card-body{padding:14px 20px;}
+.card-tabs{display:flex;gap:0;border-bottom:1px solid #f0f0f0;padding:0 14px;}
+.card-tab{padding:12px 16px;background:none;border:none;cursor:pointer;font-size:0.86em;font-weight:600;color:#888;border-bottom:3px solid transparent;transition:all 0.15s;}
+.card-tab:hover{color:#1a1a2e;background:#fafbff;}
+.card-tab.active{color:#1a1a2e;border-bottom-color:#1a1a2e;}
+.card-tab .badge{margin-left:6px;background:#f0f0f0;color:#666;padding:1px 8px;border-radius:10px;font-size:0.78em;font-weight:700;}
+.card-tab.active .badge{background:#1a1a2e;color:white;}
+
+/* ===== 검색 / 필터 (콤팩트한 인라인) ===== */
+.toolbar{background:white;border-radius:12px;padding:12px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.toolbar > .spacer{flex:1;}
+.toolbar input[type="search"],.toolbar input[type="text"]{min-width:200px;}
+.toolbar-section{display:flex;gap:6px;align-items:center;padding:0 6px;border-right:1px solid #eee;}
+.toolbar-section:last-child{border-right:none;}
+.toolbar-label{font-size:0.78em;color:#888;font-weight:600;}
+
+/* ===== 뷰 모드 탭 (수주현황 진행중/완료/취소) ===== */
+.view-tabs{display:inline-flex;background:#f0f2f5;border-radius:10px;padding:4px;gap:2px;}
+.view-tab{padding:7px 16px;background:none;border:none;cursor:pointer;font-size:0.85em;font-weight:600;color:#666;border-radius:8px;transition:all 0.15s;}
+.view-tab:hover{color:#1a1a2e;}
+.view-tab.active{background:white;color:#1a1a2e;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.view-tab .cnt{display:inline-block;background:#e9ecef;color:#888;padding:1px 7px;border-radius:8px;margin-left:6px;font-size:0.78em;font-weight:700;}
+.view-tab.active .cnt{background:#1a1a2e;color:white;}
+
+/* ===== 테이블 ===== */
+.tbl-wrap{overflow:auto;background:white;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);max-height:calc(100vh - 320px);}
+.tbl-wrap table{width:100%;border-collapse:separate;border-spacing:0;font-size:0.85em;}
+.tbl-wrap th{background:#fafbfc;padding:12px 10px;text-align:left;font-weight:700;color:#555;border-bottom:2px solid #e9ecef;white-space:nowrap;position:sticky;top:0;z-index:5;font-size:0.82em;text-transform:uppercase;letter-spacing:0.3px;}
+.tbl-wrap td{padding:11px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
+.tbl-wrap tr:hover td{background:#f8faff;}
+.tbl-wrap tr:last-child td{border-bottom:none;}
+.tbl-wrap .empty{text-align:center;color:#999;padding:48px 20px;font-size:0.9em;}
+.tbl-wrap .empty-state{display:flex;flex-direction:column;align-items:center;gap:8px;color:#999;}
+.tbl-wrap .empty-state-icon{font-size:2.4em;opacity:0.5;}
+.tbl-wrap th.num,.tbl-wrap td.num{text-align:right;font-variant-numeric:tabular-nums;}
+
+/* ===== 수주현황 컴팩트 모드 — 한 화면에 보이도록 압축 ===== */
+#ordersTblWrap{max-height:calc(100vh - 280px);}
+#ordersTblWrap table{font-size:0.74em;table-layout:auto;}
+#ordersTblWrap th{padding:7px 6px !important;font-size:0.7em !important;letter-spacing:0;line-height:1.2;}
+#ordersTblWrap td{padding:5px 6px !important;line-height:1.3;}
+#ordersTblWrap td a{color:#1565c0;font-weight:700;text-decoration:none;}
+#ordersTblWrap td a:hover{text-decoration:underline;}
+#ordersTblWrap .tag{font-size:0.72em;padding:2px 6px;}
+#ordersTblWrap .btn-xs{padding:2px 6px;font-size:0.7em;}
+/* 긴 문자열 컬럼 — 자동 말줄임 + hover tooltip */
+#ordersTblWrap td.ellip{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#ordersTblWrap td.ellip-sm{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* 짝수행 zebra striping */
+#ordersTblWrap tbody tr:nth-child(even) td{background:#fafbfc;}
+#ordersTblWrap tbody tr:hover td{background:#f0f7ff !important;}
+/* 첫 컬럼(체크박스) sticky — 가로 스크롤 시에도 항상 보임 */
+#ordersTblWrap th:nth-child(1),#ordersTblWrap td:nth-child(1){position:sticky;left:0;background:#fafbfc;z-index:4;}
+#ordersTblWrap tbody tr:nth-child(even) td:nth-child(1){background:#fafbfc;}
+#ordersTblWrap tbody tr:hover td:nth-child(1){background:#f0f7ff !important;}
+.tbl-wrap th.center,.tbl-wrap td.center{text-align:center;}
+
+/* ===== 버튼 ===== */
+.btn{padding:7px 14px;border:none;border-radius:8px;background:#1a1a2e;color:white;cursor:pointer;font-size:0.85em;font-weight:600;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{opacity:0.92;transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn-sm{padding:5px 11px;font-size:0.78em;}
+.btn-xs{padding:3px 8px;font-size:0.72em;border-radius:6px;}
+.btn-outline{background:white;color:#1a1a2e;border:1px solid #d0d3da;}
+.btn-outline:hover{background:#f0f4ff;border-color:#1a1a2e;}
+.btn-dark{background:#1a1a2e;}
+.btn-primary{background:#3498db;}
+.btn-success{background:#27ae60;}
+.btn-warning{background:#f39c12;}
+.btn-danger{background:#e74c3c;}
+.btn-ghost{background:transparent;color:#666;}
+.btn-ghost:hover{background:#f0f2f5;color:#1a1a2e;}
+.btn-icon{padding:6px 9px;}
+.action-group{display:inline-flex;gap:4px;}
+
+/* ===== 태그 / 칩 / 상태 ===== */
+.tag{display:inline-block;padding:3px 10px;border-radius:12px;background:#f0f0f0;font-size:0.75em;font-weight:700;letter-spacing:0.2px;}
+.tag.orange{background:#fff3cd;color:#856404;}
+.tag.red{background:#fee;color:#c0392b;}
+.tag.green{background:#d1f2eb;color:#0e6655;}
+.tag.blue{background:#d4e6f1;color:#1f618d;}
+.tag.purple{background:#e8daef;color:#6c3483;}
+.tag.gray{background:#f0f0f0;color:#666;}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:14px;background:#f0f2f5;font-size:0.78em;font-weight:600;color:#555;cursor:pointer;transition:all 0.15s;}
+.chip:hover{background:#e0e4eb;}
+.chip.active{background:#1a1a2e;color:white;}
+.chip .x{margin-left:4px;opacity:0.6;}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#999;}
+.status-dot.ok{background:#27ae60;}
+.status-dot.warn{background:#f39c12;}
+.status-dot.err{background:#e74c3c;}
+.status-dot.info{background:#3498db;}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:#f0f2f5;font-size:0.78em;font-weight:700;}
+.status-badge.ok{background:#d4edda;color:#155724;}
+.status-badge.warn{background:#fff3cd;color:#856404;}
+.status-badge.danger{background:#fee;color:#c0392b;}
+.status-badge.info{background:#cce5ff;color:#004085;}
+
+/* ===== 진행률 바 ===== */
+.progress{background:#f0f2f5;border-radius:10px;height:8px;overflow:hidden;position:relative;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3498db,#5dade2);transition:width 0.3s;border-radius:10px;}
+.progress-fill.ok{background:linear-gradient(90deg,#27ae60,#2ecc71);}
+.progress-fill.warn{background:linear-gradient(90deg,#f39c12,#f1c40f);}
+.progress-fill.danger{background:linear-gradient(90deg,#e74c3c,#ec7063);}
+.progress-row{display:flex;align-items:center;gap:8px;}
+.progress-row .progress{flex:1;}
+.progress-row .pct{font-size:0.78em;font-weight:700;color:#666;min-width:40px;text-align:right;}
+
+/* ===== 빈 상태 ===== */
+.empty-state{padding:60px 20px;text-align:center;color:#aaa;}
+.empty-state-icon{font-size:3em;opacity:0.45;margin-bottom:10px;}
+.empty-state-title{font-size:1.05em;font-weight:700;color:#777;margin-bottom:6px;}
+.empty-state-desc{font-size:0.85em;color:#999;}
+
+/* ===== 드롭존 ===== */
+.dropzone{border:2px dashed #d0d3da;border-radius:12px;padding:40px 20px;text-align:center;color:#888;background:#fafbfc;cursor:pointer;transition:all 0.2s;}
+.dropzone:hover,.dropzone.over{border-color:#3498db;background:#f0f7ff;color:#3498db;transform:scale(1.005);}
+.dropzone-icon{font-size:2.2em;margin-bottom:8px;opacity:0.6;}
+.dropzone-text{font-size:0.95em;font-weight:600;}
+.dropzone-hint{font-size:0.78em;color:#aaa;margin-top:6px;}
+
+/* ===== 캘린더 ===== */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+/* ★ 요일 헤더 — 일자 그리드와 동일한 7열 grid + 자연스러운 헤더 스트립 */
+.cal-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-weight:700;color:#555;padding:10px 0;font-size:0.82em;text-align:center;background:linear-gradient(180deg,#eef2ff,#f5f7ff);border-radius:8px 8px 0 0;margin-bottom:6px;border-bottom:1px solid #e0e4f5;}
+.cal-row .cal-dow{padding:2px 0;font-weight:800;letter-spacing:1px;}
+.cal-row .cal-dow.dow-sun{color:#e53935;}
+.cal-row .cal-dow.dow-sat{color:#1976d2;}
+.cal-day{background:white;border-radius:8px;padding:8px 6px;min-height:74px;border:1px solid #f0f0f0;cursor:pointer;transition:all 0.15s;}
+.cal-day:hover{box-shadow:0 2px 8px rgba(0,0,0,0.08);transform:translateY(-1px);}
+.cal-day.today{border-color:#3498db;background:#f0f7ff;}
+.cal-day.has-event{background:linear-gradient(180deg,#fff,#fffaf0);}
+.cal-day .d{font-size:0.78em;font-weight:700;color:#666;}
+
+/* ===== 폼 입력 ===== */
+input,select,textarea{padding:8px 11px;border:1px solid #d0d3da;border-radius:8px;font-size:0.88em;font-family:inherit;transition:all 0.15s;background:white;}
+input:hover,select:hover,textarea:hover{border-color:#a0a4ab;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,0.15);}
+label{font-size:0.82em;color:#666;font-weight:600;display:block;margin-bottom:4px;}
+
+/* ===== 섹션 그리드 ===== */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+@media(max-width:1100px){.grid-3,.grid-4{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:720px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+/* ===== 모달 (styles.css 의 .modal 규칙 완전 오버라이드) ===== */
+.modal{
+  display:none !important;
+  position:fixed !important;
+  top:0 !important; left:0 !important;
+  width:100vw !important; height:100vh !important;
+  max-width:none !important; max-height:none !important;
+  background:transparent !important;        /* dim 오버레이 완전 제거 */
+  box-shadow:none !important;                /* styles.css의 진한 그림자 제거 */
+  border-radius:0 !important;
+  overflow:visible !important;
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+}
+.modal.open{ display:flex !important; }
+.modal-content{
+  background:white;
+  border-radius:14px;
+  max-width:90vw;
+  max-height:90vh;
+  width:auto;                  /* 콘텐츠 크기에 맞춤 */
+  overflow:auto;
+  padding:24px;
+  box-shadow:0 8px 32px rgba(20,30,60,0.18),0 2px 8px rgba(0,0,0,0.06);
+  border:1px solid #d6dae0;
+  outline:none;
+}
+.modal *:focus{outline:none;}
+/* 모달 내부 입력에 어두운 포커스 링 부드럽게 */
+.modal-content input:focus,.modal-content select:focus,.modal-content textarea:focus{border-color:#5dade2;box-shadow:0 0 0 2px rgba(93,173,226,0.18);}
+
+/* ===== 카드 내부 테이블 — 배경과 자연스럽게 ===== */
+.card-body .tbl-wrap,
+.card .tbl-wrap{box-shadow:none;border-radius:0;background:transparent;max-height:none;}
+.card-body table,
+.card table{background:transparent;}
+.card-body table th,
+.card table th{background:transparent;border-bottom:1px solid #eef0f4;color:#888;font-weight:600;font-size:0.78em;}
+.card-body table td,
+.card table td{border-bottom:1px solid #f5f6f8;}
+.card-body table tr:last-child td,
+.card table tr:last-child td{border-bottom:none;}
+.card-body table tr:hover td,
+.card table tr:hover td{background:#fafbfd;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f0;}
+.modal-head h3{font-size:1.15em;font-weight:800;color:#1a1a2e;}
+.modal-close{background:none;border:none;font-size:1.5em;cursor:pointer;color:#999;padding:0 6px;line-height:1;}
+.modal-close:hover{color:#1a1a2e;}
+
+/* ===== 분할 패널 (좌측 리스트 + 우측 상세) ===== */
+.split-panel{display:grid;grid-template-columns:280px 1fr;gap:16px;}
+@media(max-width:900px){.split-panel{grid-template-columns:1fr;}}
+
+/* ===== 요약 바 (KPI 작은 버전) ===== */
+.summary-bar{background:white;border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);display:flex;flex-wrap:wrap;gap:24px;}
+.summary-item{display:flex;flex-direction:column;}
+.summary-item .lbl{font-size:0.74em;color:#888;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:3px;}
+.summary-item .val{font-size:1.25em;font-weight:800;color:#1a1a2e;}
+
+/* ===== 차트 영역 (간단 막대) ===== */
+.bar-row{display:grid;grid-template-columns:130px 1fr 80px;gap:10px;align-items:center;padding:6px 0;}
+.bar-row .name{font-size:0.84em;color:#444;font-weight:600;}
+.bar-row .bar{background:#f0f2f5;border-radius:6px;height:10px;overflow:hidden;}
+.bar-row .bar-fill{height:100%;background:linear-gradient(90deg,#3498db,#5dade2);border-radius:6px;transition:width 0.4s;}
+.bar-row .v{font-size:0.82em;font-weight:700;color:#666;text-align:right;}
+
+/* 헤더 동기 배너 보강 */
+#syncBanner{padding:8px 30px;display:flex;justify-content:space-between;align-items:center;font-size:0.84em;transition:all 0.3s;font-weight:600;}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>📦 영업관리 ERP</h1>
+  <div class="header-right">
+    <span id="userBadge" style="font-size:0.85em;opacity:0.85;"></span>
+  </div>
+</header>
+
+<div id="syncBanner" class="info" style="display:none;"></div>
+
+<div class="app-body">
+
+  <nav class="nav-sidebar">
+    <div class="nav-sidebar-brand">
+      <span style="font-weight:900;color:#1a1a2e;font-size:0.95em;">바로 ERP</span>
+      <span style="font-size:0.72em;color:#999;">영업관리 시스템</span>
+    </div>
+
+    <div class="nav-section-label">메인</div>
+    <button class="nav-item active" onclick="showTab('dashboard')">대시보드</button>
+
+    <div class="nav-section-label">판매</div>
+    <button class="nav-item" onclick="showTab('salesops')">영업</button>
+    <button class="nav-item" onclick="showTab('orders')">수주현황</button>
+    <button class="nav-item" onclick="showTab('delivery')">출고지시서</button>
+    <button class="nav-item" onclick="showTab('splitdelivery')">분할출고관리</button>
+    <button class="nav-item" onclick="showTab('inventory')">입고관리</button>
+    <button class="nav-item" onclick="showTab('shipment')">출고관리</button>
+    <button class="nav-item" onclick="showTab('stock')">재고관리</button>
+    <button class="nav-item" onclick="showTab('returns')">반품/RMA 관리</button>
+
+    <div class="nav-section-label">창고 사업</div>
+    <button class="nav-item" onclick="showTab('warehouse_master')">창고 마스터</button>
+    <button class="nav-item" onclick="showTab('thirdparty')">위탁 재고</button>
+    <button class="nav-item" onclick="showTab('warehouse_rental')">임대사업</button>
+    <button class="nav-item" onclick="showTab('logistics')">물류비</button>
+
+    <div class="nav-section-label">분석</div>
+    <button class="nav-item" onclick="showTab('shipsched')">출고스케줄</button>
+    <button class="nav-item" onclick="showTab('sales')">영업실적</button>
+    <button class="nav-item" onclick="showTab('cost_mgmt')">원가관리</button>
+
+    <div class="nav-section-label">문서</div>
+    <button class="nav-item" onclick="showTab('fr')">전수조사서</button>
+
+    <div class="nav-section-label">시스템</div>
+    <button class="nav-item" onclick="showTab('settings')">설정</button>
+  </nav>
+
+  <div class="main">
+
+    <!-- ═══════════════════ 대시보드 ═══════════════════ -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <!-- KPI 카드 (dashStats가 자동 채움) -->
+      <div id="dashStats" class="kpi-grid"></div>
+
+      <!-- 알림 영역 -->
+      <div id="dashAlerts"></div>
+
+      <!-- 상단 가로 2분할: 담당자별 실적 / 출고 D-Day -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>담당자별 실적</h3><span class="tag gray">이번 달</span></div>
+          <div class="card-body" id="dashManagerTable" style="max-height:340px;overflow-y:auto;"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>출고 D-Day</h3><span class="tag red">임박순</span></div>
+          <div class="card-body" id="dashUrgent" style="max-height:340px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      <!-- 하단 전폭: 최근 수주 -->
+      <div class="card">
+        <div class="card-head"><h3>최근 수주</h3><span class="tag blue">최신순</span></div>
+        <div class="card-body" id="dashRecent" style="max-height:420px;overflow-y:auto;"></div>
+      </div>
+
+      <div id="dashboardCustom"></div>
+    </div>
+
+    <!-- ═══════════════════ 영업 (견적서 + 견적비교 + 가용재고 + 서류) ═══════════════════ -->
+    <div id="tab-salesops" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">영업</div>
+          <div class="page-sub">견적서 관리 · 매입처 견적비교 · 실시간 가용재고 · 서류 관리 · 사용전검사 입회</div>
+        </div>
+      </div>
+
+      <!-- 서브탭 -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-tabs">
+          <button id="sops-subtab-quote"      class="card-tab active" onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('quote')">견적서관리</button>
+          <button id="sops-subtab-compare"    class="card-tab"        onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('compare')">견적비교</button>
+          <button id="sops-subtab-atp"        class="card-tab"        onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('atp')">실시간 가용재고</button>
+          <button id="sops-subtab-po"         class="card-tab"        onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('po')">발주서</button>
+          <button id="sops-subtab-docs"       class="card-tab"        onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('docs')">서류 관리</button>
+          <button id="sops-subtab-inspection" class="card-tab"        onclick="if(typeof setSalesOpsSubtab==='function')setSalesOpsSubtab('inspection')">사용전검사</button>
+        </div>
+      </div>
+
+      <!-- 견적서관리 패널 (quotation 모듈이 .qt-box를 여기로 이동) -->
+      <div id="sops-quote-pane">
+        <div id="quotationTabHost"></div>
+      </div>
+
+      <!-- 견적비교 패널 (vendorQuotes 모듈이 .vq-box를 여기로 이동) -->
+      <div id="sops-compare-pane" style="display:none;">
+        <div id="vendorQuotesTabHost"></div>
+      </div>
+
+      <!-- 실시간 가용재고 패널 (atp 모듈이 #erp-atp-panel을 여기로 이동) -->
+      <div id="sops-atp-pane" style="display:none;">
+        <div id="atpTabHost"></div>
+      </div>
+
+      <!-- 발주서 패널 — PDF 드래그&드롭으로 수주 자동 등록 -->
+      <div id="sops-po-pane" style="display:none;">
+        <div id="po-dropzone" class="dropzone" style="margin-bottom:14px;padding:36px 20px;background:#fafbff;border:2px dashed #1565c0;border-radius:12px;text-align:center;cursor:pointer;transition:all .15s;"
+             ondragover="if(typeof onPoDragOver==='function')onPoDragOver(event,this)"
+             ondragleave="if(typeof onPoDragLeave==='function')onPoDragLeave(event,this)"
+             ondrop="if(typeof onPoDrop==='function')onPoDrop(event)"
+             onclick="document.getElementById('po-file-input').click()">
+          <div style="font-size:2.4em;">📥</div>
+          <div style="font-size:1.05em;font-weight:800;color:#0d47a1;margin-top:8px;">발주서 PDF — 클릭 또는 드래그&드롭</div>
+          <div style="font-size:0.86em;color:#666;margin-top:6px;">발주서 PDF 를 끌어놓으면 자동 파싱하여 수주현황에 등록합니다</div>
+          <div style="font-size:0.78em;color:#888;margin-top:4px;">PJ NO · 고객사 · 모델명 · 수량 · 단가 · 발전소명 · 납품주소 자동 인식</div>
+          <input id="po-file-input" type="file" accept=".pdf,application/pdf" multiple style="display:none;"
+                 onchange="if(typeof onPoFilesSelected==='function')onPoFilesSelected(event)">
+        </div>
+
+        <!-- 파싱 결과 미리보기 -->
+        <div id="po-preview-area" style="display:none;"></div>
+
+        <!-- 등록된 발주서 목록 -->
+        <div class="card">
+          <div class="card-head">
+            <h3>등록된 발주서</h3>
+            <span class="tag gray" id="po-list-count">0건</span>
+          </div>
+          <div class="card-body" id="po-list-area"></div>
+        </div>
+      </div>
+
+      <!-- 서류 관리 패널 -->
+      <div id="sops-docs-pane" style="display:none;">
+        <!-- 검색 + 필터 -->
+        <div class="toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">검색</label>
+            <input id="docs-search" type="search" placeholder="PJ NO / 고객사 / 모델명 / 파일명" style="width:340px;max-width:100%;"
+                   oninput="if(typeof renderDocsTab==='function')renderDocsTab()">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">서류 유형</label>
+            <select id="docs-type-f" style="min-width:160px;" onchange="if(typeof renderDocsTab==='function')renderDocsTab()">
+              <option value="">전체</option>
+              <option value="발주서">발주서</option>
+              <option value="허가증">허가증</option>
+              <option value="FD성적서">FD성적서</option>
+              <option value="인증서">인증서</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">파일 유무</label>
+            <select id="docs-has-f" style="min-width:140px;" onchange="if(typeof renderDocsTab==='function')renderDocsTab()">
+              <option value="">전체</option>
+              <option value="yes">파일 있음</option>
+              <option value="no">파일 없음</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- KPI 통계 -->
+        <div id="docsStats" class="kpi-grid"></div>
+
+        <!-- 서류 매트릭스 테이블 -->
+        <div id="docsTableArea"></div>
+      </div>
+
+      <!-- 사용전검사 패널 — 일자별 입회 일정 -->
+      <div id="sops-inspection-pane" style="display:none;">
+        <!-- 필터 -->
+        <div class="toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">검색</label>
+            <input id="insp-search" type="search" placeholder="PJ NO / 고객사 / 발전소" style="width:300px;"
+                   oninput="if(typeof renderInspectionTab==='function')renderInspectionTab()">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">기간</label>
+            <select id="insp-period" style="min-width:140px;" onchange="if(typeof renderInspectionTab==='function')renderInspectionTab()">
+              <option value="upcoming">예정 (오늘 이후)</option>
+              <option value="today">오늘 입회</option>
+              <option value="this-week">이번 주</option>
+              <option value="this-month">이번 달</option>
+              <option value="past">완료 (과거)</option>
+              <option value="unscheduled">미정</option>
+              <option value="all">전체</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">입회 상태</label>
+            <select id="insp-status-f" style="min-width:140px;" onchange="if(typeof renderInspectionTab==='function')renderInspectionTab()">
+              <option value="">전체</option>
+              <option value="planned">예정</option>
+              <option value="attended">입회 완료</option>
+              <option value="passed">합격</option>
+              <option value="failed">불합격</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- KPI -->
+        <div id="inspectionStats" class="kpi-grid"></div>
+
+        <!-- 일자별 캘린더형 그룹 + 상세 테이블 -->
+        <div id="inspectionTableArea"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 수주현황 ═══════════════════ -->
+    <div id="tab-orders" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">수주현황</div>
+          <div class="page-sub">전체 수주를 진행 상태별로 관리합니다</div>
+        </div>
+      </div>
+
+      <!-- 진행중 / 납품완료 / 취소 / 전체 — 뷰 모드 탭 -->
+      <div class="card" style="margin-bottom:12px;padding:0;">
+        <div style="display:flex;border-bottom:1px solid #eef0f4;">
+          <button id="ovt-active" class="ovt-tab" onclick="setOrderViewMode('active')" style="flex:1;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.92em;border-bottom:3px solid #1a1a2e;font-weight:700;color:#1a1a2e;">
+            수주 (진행중) <span id="ovt-active-cnt" style="color:#aaa;font-size:0.88em;">(0)</span>
+          </button>
+          <button id="ovt-completed" class="ovt-tab" onclick="setOrderViewMode('completed')" style="flex:1;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.92em;border-bottom:3px solid transparent;font-weight:500;color:#888;">
+            납품완료 <span id="ovt-completed-cnt" style="color:#aaa;font-size:0.88em;">(0)</span>
+          </button>
+          <button id="ovt-cancelled" class="ovt-tab" onclick="setOrderViewMode('cancelled')" style="flex:1;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.92em;border-bottom:3px solid transparent;font-weight:500;color:#888;">
+            취소 <span id="ovt-cancelled-cnt" style="color:#aaa;font-size:0.88em;">(0)</span>
+          </button>
+          <button id="ovt-all" class="ovt-tab" onclick="setOrderViewMode('all')" style="flex:1;padding:12px 16px;border:none;background:none;cursor:pointer;font-size:0.92em;border-bottom:3px solid transparent;font-weight:500;color:#888;">
+            전체 <span id="ovt-all-cnt" style="color:#aaa;font-size:0.88em;">(0)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 검색 + 필터 툴바 (필터명 select 위에 + 액션 버튼 날짜 옆으로) -->
+      <div class="toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:2px;flex:0 0 240px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">검색</label>
+          <input id="f-search" type="search" placeholder="PJ NO / 고객사 / 모델" style="width:100%;" oninput="if(typeof renderOrders==='function')renderOrders()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">담당자</label>
+          <select id="f-manager" onchange="if(typeof renderOrders==='function')renderOrders()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">제품군</label>
+          <select id="f-product" onchange="if(typeof renderOrders==='function')renderOrders()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">제조사</label>
+          <select id="f-mfr" onchange="if(typeof renderOrders==='function')renderOrders()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">상태</label>
+          <select id="f-status" onchange="if(typeof renderOrders==='function')renderOrders()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">기간</label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input id="f-from" type="date" onchange="if(typeof renderOrders==='function')renderOrders()">
+            <span style="color:#aaa;">~</span>
+            <input id="f-to" type="date" onchange="if(typeof renderOrders==='function')renderOrders()">
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 다량발주 등록 (검색창 바로 아래로 이동, 이미지 디자인) ============ -->
+      <div id="bulkOrderCard" class="card" style="margin-bottom:14px;">
+        <div class="card-head" style="cursor:pointer;background:#fafbfc;" onclick="if(typeof toggleBulkSection==='function')toggleBulkSection()">
+          <h3 style="border:none;padding:0;margin:0;">다량 발주 등록 (붙여넣기)</h3>
+          <button class="btn btn-xs btn-outline" type="button">▲</button>
+        </div>
+        <div id="bulkOrderBody" style="display:block;padding:14px 18px;">
+          <div style="background:#eef5ff;border:1px solid #d0e2ff;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:0.83em;color:#1a1a2e;line-height:1.55;">
+            <div style="margin-bottom:4px;">구글 시트에서 데이터 행을 복사(Ctrl+C) 후 아래 붙여넣으세요.</div>
+            <div style="color:#555;">
+              <strong>열 순서 (30열):</strong> 담당자 / PJ NO / 수주일 / 고객사 / 제품군 / 제조사 / 매입NO / 모델명 / 제품용량(W) / 수량 / 수주용량(kW) / 제품단가(원) / 수주총액(원) / 총금액(VAT포함) / 매입사 / 매입단가 / 매입총액(원) / 영업이익(원) / 영업이익률(%) / 출고요청일 / <strong>납품일</strong> / 허가증 / FD성적서 / 인증서 / 사용전검사일정 / 발전소명 / 납품주소 / 인수담당자 / 비고 / 수금조건
+              <div style="margin-top:4px;color:#777;">· 31열 이후(매출·수금 등)는 자동으로 무시됩니다. · 담당자는 "홍길동", "김빛날희호 / 권오주" 처럼 여러 명 병기도 인식됩니다.</div>
+            </div>
+          </div>
+
+          <label style="display:block;font-size:0.84em;color:#666;margin-bottom:6px;font-weight:600;">붙여넣기 영역 (탭 구분, 엑셀/구글시트 형식)</label>
+          <textarea id="bulk-paste-area" rows="4"
+                    style="width:100%;font-family:'Consolas',monospace;font-size:0.82em;resize:vertical;border:1px dashed #b0bec5;background:#fafbfc;"
+                    placeholder="여기에 엑셀/구글시트에서 복사한 데이터를 붙여넣으세요 (탭으로 구분된 행)"
+                    oninput="if(typeof parseBulkErpOrders==='function')parseBulkErpOrders()"></textarea>
+
+          <div id="bulkPreviewArea" style="display:none;margin-top:14px;">
+            <div style="margin-bottom:8px;font-weight:700;color:#1a1a2e;font-size:0.92em;">미리보기 (등록 전 확인)</div>
+            <div class="tbl-wrap" style="max-height:300px;overflow:auto;">
+              <table>
+                <thead><tr>
+                  <th>일자</th>
+                  <th>PJ NO</th>
+                  <th>고객사</th>
+                  <th>발전소명</th>
+                  <th>납품주소</th>
+                  <th>모델명</th>
+                  <th class="num">수량</th>
+                  <th class="num">용량(kW)</th>
+                  <th>인수담당자</th>
+                  <th>비고</th>
+                  <th>수금조건</th>
+                </tr></thead>
+                <tbody id="bulkPreviewTbody"></tbody>
+              </table>
+            </div>
+            <div id="bulkParseInfo" style="margin:10px 0;font-size:0.85em;color:#444;"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="btn btn-success btn-sm" onclick="if(typeof registerBulkErpOrders==='function')registerBulkErpOrders()">전체 등록</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('bulk-paste-area').value='';document.getElementById('bulkPreviewArea').style.display='none';document.getElementById('bulkParseInfo').innerHTML='';">초기화</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카운트 정보 + 액션 버튼 (다량 발주등록 아래) -->
+      <div id="ordersCountRow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 4px 12px;">
+        <div id="ordersCountInfo" style="color:#888;font-size:0.85em;flex:0 0 auto;"></div>
+        <div style="display:flex;gap:6px;align-items:center;flex:0 0 auto;">
+          <button id="btnListView" class="btn btn-dark btn-sm" onclick="if(typeof setOrderView==='function')setOrderView('list')">목록</button>
+          <button id="btnCalView" class="btn btn-outline btn-sm" onclick="if(typeof setOrderView==='function')setOrderView('cal')">달력</button>
+          <button class="btn btn-outline btn-sm" onclick="if(typeof exportOrdersExcel==='function')exportOrdersExcel()">엑셀</button>
+          <button class="btn btn-success btn-sm" onclick="if(typeof openNewOrderModal==='function')openNewOrderModal()">새 수주</button>
+          <button class="btn btn-primary btn-sm" onclick="if(typeof completeSelectedOrders==='function')completeSelectedOrders()" title="체크한 수주를 납품완료 처리 (납품일 자동 기록)">납품완료</button>
+          <button class="btn btn-primary btn-sm" onclick="if(typeof createSelectedDeliveryOrders==='function')createSelectedDeliveryOrders()" title="체크한 수주의 출고지시서를 한 번에 발행 (매입사가 광주창고·탑솔라 계열인 건만)">출고지시서 생성</button>
+          <button class="btn btn-danger btn-sm" onclick="if(typeof deleteSelectedOrders==='function')deleteSelectedOrders()">삭제</button>
+        </div>
+      </div>
+
+      <!-- 달력 뷰 — 좌(달력) + 우(선택일 일정내역) 분할 -->
+      <div id="ordersCalendarView" style="display:none;">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;">
+          <div class="card">
+            <div class="card-head">
+              <div class="action-group">
+                <button class="btn btn-outline btn-sm" onclick="if(typeof changeCalendarMonth==='function')changeCalendarMonth(-1)">◀</button>
+                <span id="calMonthLabel" style="font-size:1.05em;font-weight:800;color:#1a1a2e;padding:0 8px;"></span>
+                <button class="btn btn-outline btn-sm" onclick="if(typeof changeCalendarMonth==='function')changeCalendarMonth(1)">▶</button>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="if(typeof goToCalendarToday==='function')goToCalendarToday()">📍 오늘</button>
+            </div>
+            <div class="card-body">
+              <div id="calDowRow" class="cal-row"></div>
+              <div id="calDayGrid" class="cal-grid"></div>
+            </div>
+          </div>
+          <div class="card" style="position:sticky;top:14px;align-self:flex-start;max-height:calc(100vh - 200px);overflow:auto;">
+            <div class="card-head"><h3 id="calSideTitle">선택 일자의 일정</h3></div>
+            <div class="card-body" id="calSideList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 목록 뷰 (테이블) -->
+      <div id="ordersTblWrap" class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="center"><input id="orderSelectAll" type="checkbox" onchange="toggleAllOrderChecks(this.checked)"></th>
+            <th>#</th><th>상태</th>
+            <th id="th-manager" style="white-space:nowrap;">담당자</th>
+            <th>PJ NO</th><th>수주일</th>
+            <th id="th-customer" style="white-space:nowrap;">고객사</th>
+            <th id="th-product" style="white-space:nowrap;">제품군</th>
+            <th>제조사</th>
+            <th id="th-model" style="white-space:nowrap;">모델</th>
+            <th class="num">수량</th>
+            <th id="th-reqdate" style="white-space:nowrap;min-width:120px;">출고요청일</th>
+            <th class="center" style="white-space:nowrap;min-width:60px;width:60px;">계약금</th>
+            <th class="center" style="white-space:nowrap;min-width:60px;width:60px;">잔금</th>
+            <th class="center" style="white-space:nowrap;min-width:100px;">출고지시서</th>
+            <th>발전소명</th><th>납품주소</th>
+            <th class="center">발주서</th><th class="center">허가증</th><th class="center">FD성적서</th><th class="center">인증서</th>
+          </tr></thead>
+          <tbody id="ordersTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 출고지시서 ═══════════════════ -->
+    <div id="tab-delivery" class="tab-panel">
+      <div id="deliveryListArea">
+        <div class="page-head">
+          <div>
+            <div class="page-title">출고지시서</div>
+            <div class="page-sub">수주를 선택해 출고지시서를 발행하고 인쇄·서명을 진행합니다</div>
+          </div>
+          <div class="action-group">
+            <button class="btn btn-outline btn-sm" onclick="if(typeof showDOReceiptSelectModal==='function')showDOReceiptSelectModal()">인수증 선택</button>
+          </div>
+        </div>
+
+        <!-- 출고 가능/대기 KPI -->
+        <div id="shipStats" class="kpi-grid"></div>
+
+        <!-- 검색 + 필터 -->
+        <div class="toolbar">
+          <input id="ship-search" type="search" placeholder="PJ NO / 고객사 / 모델 검색" style="flex:1;min-width:240px;">
+          <div class="toolbar-section">
+            <select id="ship-manager"><option value="">담당자 전체</option></select>
+            <select id="ship-avail">
+              <option value="">📦 전체 출고</option>
+              <option value="ready">✅ 출고가능</option>
+              <option value="pending">⏳ 대기</option>
+            </select>
+            <select id="ship-status"><option value="">상태 전체</option></select>
+          </div>
+        </div>
+
+        <!-- 출고 리스트 -->
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>상태</th><th>PJ NO</th><th>담당자</th><th>고객사</th><th>모델</th>
+              <th class="num">수량</th><th>출고요청일</th><th class="center">진행률</th><th class="center">액션</th>
+            </tr></thead>
+            <tbody id="shipmentTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 출고지시서 미리보기 -->
+      <div id="deliveryPreviewArea" style="display:none;">
+        <div class="page-head">
+          <div>
+            <div class="page-title">출고지시서 미리보기</div>
+            <div class="page-sub">서명·인쇄 후 출고 처리하세요</div>
+          </div>
+          <div class="action-group">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('deliveryPreviewArea').style.display='none';document.getElementById('deliveryListArea').style.display='block';">◀ 목록으로</button>
+            <button class="btn btn-outline btn-sm" onclick="if(typeof printDeliveryOrder==='function')printDeliveryOrder()">인쇄/PDF</button>
+            <button id="doPreviewProcessBtn" class="btn btn-success btn-sm" onclick="if(typeof processDeliveryFromPreview==='function')processDeliveryFromPreview()">🚚 출고처리</button>
+          </div>
+        </div>
+        <div class="card"><div class="card-body" id="deliveryPrintArea"></div></div>
+      </div>
+
+      <div id="doContent" style="display:none;"></div>
+    </div>
+
+    <!-- ═══════════════════ 분할출고관리 ═══════════════════ -->
+    <div id="tab-splitdelivery" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">분할출고관리</div>
+          <div class="page-sub">큰 수주를 여러 차례 나눠 출고하는 진행 상황을 추적합니다</div>
+        </div>
+      </div>
+
+      <!-- 검색 + 필터 (PJ NO / 모델명 분리) -->
+      <div class="toolbar">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">PJ NO 검색</label>
+          <input id="split-f-pjno" type="search" placeholder="PJ NO" style="width:180px;" oninput="if(typeof renderSplitTab==='function')renderSplitTab()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">모델명 검색</label>
+          <input id="split-f-model" type="search" placeholder="모델명" style="width:180px;" oninput="if(typeof renderSplitTab==='function')renderSplitTab()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">담당자</label>
+          <select id="split-f-manager" onchange="if(typeof renderSplitTab==='function')renderSplitTab()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">상태</label>
+          <select id="split-f-status" onchange="if(typeof renderSplitTab==='function')renderSplitTab()"><option value="">전체</option></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">보기</label>
+          <select id="split-f-view" onchange="if(typeof renderSplitTab==='function')renderSplitTab()">
+            <option value="registered">등록된 건만</option>
+            <option value="all">전체</option>
+          </select>
+        </div>
+        <!-- 호환성: 기존 통합 검색 ID 유지 (숨김) -->
+        <input id="split-f-search" type="hidden">
+      </div>
+
+      <!-- 빠른 등록 카드 (인라인 폼) -->
+      <div class="card">
+        <div class="card-head">
+          <h3>빠른 분할 등록</h3>
+          <span class="tag blue">PJ NO만 알면 즉시 등록</span>
+        </div>
+        <div class="card-body">
+          <input id="sreg-rowid" type="hidden">
+          <div style="display:grid;grid-template-columns:2fr 2fr 0.5fr auto auto;gap:10px;align-items:end;">
+            <div><label>PJ NO</label><input id="sreg-pjno-input" placeholder="PJ번호 입력 (자동 검색)" style="width:100%;" oninput="if(typeof onSregPjNoInput==='function')onSregPjNoInput()"></div>
+            <div><label>모델</label><input id="sreg-model-input" placeholder="모델명 (자동 채움)" style="width:100%;"></div>
+            <div><label>수주 수량</label><input id="sreg-qty-input" type="number" placeholder="수량" style="width:100%;"></div>
+            <button class="btn btn-success" onclick="if(typeof confirmSplitRegister==='function')confirmSplitRegister()">등록</button>
+            <button class="btn btn-danger" onclick="if(typeof deleteSelectedSplits==='function')deleteSelectedSplits()" title="체크된 항목 일괄 삭제">삭제</button>
+          </div>
+          <div id="sreg-info" style="margin-top:10px;font-size:0.85em;color:#666;display:none;border-radius:8px;padding:10px;"></div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div id="splitTabStats" class="kpi-grid"></div>
+
+      <!-- 빈 상태 안내 -->
+      <div id="splitEmptyHint" class="empty-state" style="display:none;">
+        <div class="empty-state-icon">📦</div>
+        <div class="empty-state-title">등록된 분할출고가 없습니다</div>
+        <div class="empty-state-desc">위 분할출고 등록 버튼으로 시작하세요</div>
+      </div>
+
+      <!-- 분할출고 테이블 -->
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="center" style="width:32px;"><input type="checkbox" id="split-sel-all" onclick="if(typeof toggleAllSplitSel==='function')toggleAllSplitSel(this.checked)"></th>
+            <th>PJ NO</th>
+            <th>고객사</th>
+            <th>모델</th>
+            <th class="num">총수량</th>
+            <th class="num">출고수량</th>
+            <th class="num">잔여수량</th>
+            <th class="center" style="min-width:160px;">진행률</th>
+            <th class="center">상태</th>
+            <th class="center">작업</th>
+          </tr></thead>
+          <tbody id="splitDeliveryTbody"></tbody>
+        </table>
+      </div>
+
+      <input id="split-pjno" type="hidden">
+      <div id="splitDeliveryInfo"></div>
+      <div id="splitDeliveryList"></div>
+    </div>
+
+    <!-- ═══════════════════ 입고관리 ═══════════════════ -->
+    <div id="tab-inventory" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">입고관리</div>
+          <div class="page-sub">제품 입고를 기록하고 입고 이력 · 입고예정(ETA·운송)을 통합 관리합니다</div>
+        </div>
+      </div>
+
+      <!-- 서브탭 -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-tabs">
+          <button id="inv-subtab-history"  class="card-tab active" onclick="if(typeof setInventorySubtab==='function')setInventorySubtab('history')">입고 이력</button>
+          <button id="inv-subtab-incoming" class="card-tab"        onclick="if(typeof setInventorySubtab==='function')setInventorySubtab('incoming')">입고예정 (ETA · 운송)</button>
+        </div>
+      </div>
+
+      <!-- 입고 이력 패널 -->
+      <div id="inv-history-pane">
+        <!-- 한 줄 배치: 검색 → 창고 → 입고 등록 → 수정 → 삭제 -->
+        <div class="toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">검색</label>
+            <input id="inv-search" type="search" placeholder="모델명 / B/L / 비고 / 매입처 / PJ NO / 단가" style="width:340px;max-width:100%;"
+                   oninput="if(typeof renderInventoryHistory==='function')renderInventoryHistory()">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:0.72em;color:#888;font-weight:700;">창고</label>
+            <select id="inv-warehouse-f" style="min-width:180px;"
+                    onchange="if(typeof renderInventoryHistory==='function')renderInventoryHistory()"><option value="">전체 창고</option></select>
+          </div>
+          <button class="btn btn-success btn-sm" onclick="if(typeof openInboundModal==='function')openInboundModal()">입고 등록</button>
+          <button class="btn btn-dark btn-sm" onclick="if(typeof editSelectedInventory==='function')editSelectedInventory()">수정</button>
+          <button class="btn btn-danger btn-sm" onclick="if(typeof deleteSelectedInventory==='function')deleteSelectedInventory()">삭제</button>
+          <span id="inv-sel-cnt" style="font-size:0.82em;color:#666;">선택 <strong style="color:#0d47a1;">0</strong>건</span>
+        </div>
+
+        <!-- 입고 이력 (재고관리.js의 renderInventoryHistory가 채움) -->
+        <div id="inventoryHistoryTable"></div>
+      </div>
+
+      <!-- 입고예정 패널 (incoming 모듈이 .in-box를 여기로 이동) -->
+      <div id="inv-incoming-pane" style="display:none;">
+        <div id="incomingTabHost"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 출고관리 (shipment) ═══════════════════ -->
+    <div id="tab-shipment" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">출고관리</div>
+          <div class="page-sub">출고 이력 + 모델별 출고 분석 + 출고 등록을 통합 관리합니다</div>
+        </div>
+      </div>
+
+      <!-- 검색 + 필터 + 출고등록 (맨 위) -->
+      <div class="toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">검색</label>
+          <input id="ship-search-2" type="search" placeholder="모델명 / 창고 / PJ NO / 비고 검색" style="width:340px;max-width:100%;"
+                 oninput="if(typeof renderOutboundHistory==='function')renderOutboundHistory()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:0.72em;color:#888;font-weight:700;">담당자</label>
+          <select id="ship-manager-2" style="min-width:160px;"><option value="">전체</option></select>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="if(typeof openOutboundModal==='function')openOutboundModal()">출고 등록</button>
+      </div>
+
+      <!-- 출고 예정 카드 (D-7 이내) -->
+      <div class="card">
+        <div class="card-head">
+          <h3>출고 예정 (D-7 이내)</h3>
+        </div>
+        <div class="card-body" id="pendingInbound"></div>
+      </div>
+
+      <!-- 모델별 출고 분석 (재고관리에서 이동) -->
+      <div class="card">
+        <div class="card-head">
+          <h3>모델별 출고 분석</h3>
+        </div>
+        <div class="card-body">
+          <div class="tbl-wrap" style="box-shadow:none;border-radius:0;background:transparent;max-height:380px;">
+            <table>
+              <thead><tr>
+                <th>모델</th><th>제조사</th>
+                <th class="num">총 입고</th><th class="num">총 출고</th>
+                <th class="num">현재고</th><th class="center">상태</th><th class="center">출고내역</th>
+              </tr></thead>
+              <tbody id="shipModelTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 출고 이력 -->
+      <div id="outboundHistoryTable"></div>
+    </div>
+
+    <!-- ═══════════════════ 반품/RMA 관리 ═══════════════════ -->
+    <div id="tab-returns" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">반품/RMA 관리</div>
+          <div class="page-sub">고객 반품(반품입고)과 매입사 반품(반품출고)을 통합 관리합니다</div>
+        </div>
+      </div>
+      <div id="returnsTabHost"></div>
+    </div>
+
+    <!-- ═══════════════════ 재고관리 ═══════════════════ -->
+    <div id="tab-stock" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">재고관리</div>
+          <div class="page-sub">모델·창고별 현재 재고와 입출고 이력을 통합 관리합니다</div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-outline btn-sm" onclick="if(typeof renderStockTab==='function')renderStockTab()">🔄 새로고침</button>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div id="stockTabStats" class="kpi-grid"></div>
+
+      <!-- 검색 -->
+      <div class="toolbar">
+        <input id="stock-search" type="search" placeholder="모델 / 제조사 / 창고 검색" style="flex:1;min-width:240px;" oninput="if(typeof renderStockTab==='function')renderStockTab()">
+      </div>
+
+      <!-- 2-column: 모델별 + 창고별 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h3>모델별 재고</h3>
+            <span class="tag blue">전체 모델</span>
+          </div>
+          <div class="tbl-wrap" style="border-radius:0;box-shadow:none;max-height:480px;">
+            <table>
+              <thead><tr>
+                <th>모델</th><th>제조사</th>
+                <th class="num">입고</th><th class="num">출고</th>
+                <th class="num">현재고</th><th class="center">상태</th><th class="center">액션</th>
+              </tr></thead>
+              <tbody id="stockModelTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>창고별 재고</h3>
+            <span class="tag green">현재 보관 위치</span>
+          </div>
+          <div class="tbl-wrap" style="border-radius:0;box-shadow:none;max-height:480px;">
+            <table>
+              <thead><tr>
+                <th>창고</th>
+                <th class="num">입고</th><th class="num">출고</th><th class="num">재고</th>
+              </tr></thead>
+              <tbody id="stockWarehouseTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 입출고 이력 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>입출고 이력</h3>
+          <span class="tag gray">최근 30건</span>
+        </div>
+        <div id="stockHistoryWrap" class="tbl-wrap" style="border-radius:0;box-shadow:none;">
+          <table>
+            <thead id="stockHistoryHead"></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 창고 마스터 -->
+    <div id="tab-warehouse_master" class="tab-panel">
+      <h2 style="margin-bottom:16px;">창고 마스터</h2>
+      <div id="warehouseMasterTabHost"></div>
+    </div>
+
+    <!-- 위탁 재고 (구 타사 재고) -->
+    <div id="tab-thirdparty" class="tab-panel">
+      <h2 style="margin-bottom:16px;">위탁 재고</h2>
+      <div id="thirdPartyTabHost"></div>
+    </div>
+
+    <!-- 임대사업 (구 창고 임대) -->
+    <div id="tab-warehouse_rental" class="tab-panel">
+      <h2 style="margin-bottom:16px;">임대사업</h2>
+      <div id="warehouseRentalTabHost"></div>
+    </div>
+
+    <!-- 물류비 -->
+    <div id="tab-logistics" class="tab-panel">
+      <h2 style="margin-bottom:16px;">물류비</h2>
+      <div id="logisticsTabHost"></div>
+    </div>
+
+    <!-- ═══════════════════ 영업실적 ═══════════════════ -->
+    <div id="tab-sales" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">영업실적</div>
+          <div class="page-sub">담당자·제품·기간별 매출과 이익 분석 + 매출 예측</div>
+        </div>
+        <button id="sales-export-btn" class="btn btn-outline btn-sm" onclick="if(typeof exportSalesExcel==='function')exportSalesExcel()">엑셀 내보내기</button>
+      </div>
+
+      <!-- 서브탭 -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-tabs">
+          <button id="sales-subtab-perf"     class="card-tab active" onclick="if(typeof setSalesSubtab==='function')setSalesSubtab('perf')">실적 분석</button>
+          <button id="sales-subtab-forecast" class="card-tab"        onclick="if(typeof setSalesSubtab==='function')setSalesSubtab('forecast')">매출 예측</button>
+          <button id="sales-subtab-credit"   class="card-tab"        onclick="if(typeof setSalesSubtab==='function')setSalesSubtab('credit')">신용분석</button>
+        </div>
+      </div>
+
+      <!-- 실적 분석 패널 -->
+      <div id="sales-perf-pane">
+      <!-- 필터 툴바 -->
+      <div class="toolbar">
+        <div class="toolbar-section">
+          <span class="toolbar-label">담당자</span>
+          <select id="sp-manager" onchange="if(typeof renderSalesPerf==='function')renderSalesPerf()"><option value="">전체</option></select>
+        </div>
+        <div class="toolbar-section">
+          <span class="toolbar-label">기간</span>
+          <select id="sp-period" onchange="if(typeof renderSalesPerf==='function')renderSalesPerf()">
+            <option value="all">전체</option>
+            <option value="month">이번 달</option>
+            <option value="quarter">이번 분기</option>
+            <option value="year">이번 연도</option>
+            <option value="custom">직접 선택</option>
+          </select>
+        </div>
+        <div class="toolbar-section">
+          <span class="toolbar-label">직접 기간</span>
+          <input id="sp-from" type="date" onchange="if(typeof renderSalesPerf==='function')renderSalesPerf()">
+          <span style="color:#aaa;">~</span>
+          <input id="sp-to" type="date" onchange="if(typeof renderSalesPerf==='function')renderSalesPerf()">
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div id="salesStats" class="kpi-grid"></div>
+
+      <!-- 차트 영역: 담당자별 + 제품별 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>담당자별 실적</h3><span class="tag purple">랭킹</span></div>
+          <div class="card-body" id="salesByManager"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>제품별 매출</h3><span class="tag blue">제품군</span></div>
+          <div class="card-body" id="salesByProduct"></div>
+        </div>
+      </div>
+
+      <!-- 월별 추이 (전폭) -->
+      <div class="card">
+        <div class="card-head"><h3>기간별 추이</h3><span class="tag gray">시계열</span></div>
+        <div class="card-body" id="salesMonthly"></div>
+      </div>
+
+      <!-- 상세 내역 + 미수금 (2-column) -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>상세 내역</h3></div>
+          <div class="tbl-wrap" style="border-radius:0;box-shadow:none;max-height:480px;">
+            <table>
+              <thead><tr>
+                <th>PJ NO</th><th>고객사</th><th>모델</th>
+                <th class="num">수량</th><th class="num">매출</th><th class="num">이익</th>
+              </tr></thead>
+              <tbody id="salesDetailTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>미수금 현황</h3><span class="tag red">회수 대기</span></div>
+          <div class="card-body" id="salesReceivables"></div>
+        </div>
+      </div>
+      </div><!-- /sales-perf-pane -->
+
+      <!-- 매출 예측 패널 (erpForecast 모듈이 .fc-box를 여기로 이동) -->
+      <div id="sales-forecast-pane" style="display:none;">
+        <div id="forecastTabHost"></div>
+      </div>
+
+      <!-- 신용분석 패널 (erpCredit 모듈이 .cr-box를 여기로 이동) -->
+      <div id="sales-credit-pane" style="display:none;">
+        <div id="creditTabHost"></div>
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════ 출고스케줄 (수주 기반 소요/부족) ═══════════════════ -->
+    <div id="tab-shipsched" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">출고스케줄</div>
+          <div class="page-sub">수주현황의 출고예정(출고요청일)을 기준일 대비 1주·1개월·3개월·6개월·1년 구간으로 집계 — 모델별 필요수량과 현재고 대비 부족수량을 산출합니다</div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-outline btn-sm" onclick="if(window.shipSched)shipSched.refresh()">🔄 새로고침</button>
+          <button class="btn btn-outline btn-sm" onclick="if(window.shipSched)shipSched.reset()">↺ 필터 초기화</button>
+          <button class="btn btn-green btn-sm" onclick="if(window.shipSched)shipSched.exportXlsx()">📊 엑셀</button>
+          <button class="btn btn-dark btn-sm" onclick="if(window.shipSched)shipSched.print()">🖨️ 인쇄</button>
+        </div>
+      </div>
+      <div id="shipSchedTabHost"></div>
+    </div>
+
+    <!-- ═══════════════════ 원가관리 (수입 물류비) ═══════════════════ -->
+    <div id="tab-cost_mgmt" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">원가관리 (수입 물류비)</div>
+          <div class="page-sub">선진로지스 · C&amp;I LOGISTICS 등 인보이스 자동 파싱 + 단위 원가 분석</div>
+        </div>
+      </div>
+      <div id="costMgmtTabHost"></div>
+    </div>
+
+    <!-- ═══════════════════ 전수조사서 (FR) ═══════════════════ -->
+    <div id="tab-fr" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">전수조사서</div>
+        </div>
+        <div class="action-group">
+          <button class="btn btn-outline btn-sm" onclick="if(typeof frExportMatched==='function')frExportMatched();else if(typeof exportFrExcel==='function')exportFrExcel()">결과 엑셀</button>
+          <button class="btn btn-success btn-sm" onclick="if(typeof frAttachToOrder==='function')frAttachToOrder();else alert('전수조사서 모듈이 아직 로드되지 않았습니다.')">📎 수주 FD성적서로 등록</button>
+        </div>
+      </div>
+
+      <!-- ① Flash DATE 파일 -->
+      <div class="card">
+        <div class="card-head"><h3>Flash DATE 파일</h3><span class="tag blue">엑셀 / CSV</span></div>
+        <div class="card-body">
+          <div id="fr-flash-drop" class="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">파일을 여기에 드래그하거나 클릭</div>
+            <div class="dropzone-hint">Flash DATE 엑셀(.xlsx) 또는 CSV — 여러 파일 동시 업로드 가능</div>
+          </div>
+          <div id="fr-flash-info" style="margin-top:12px;font-size:0.85em;color:#666;"></div>
+          <div id="fr-file-chips" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+      </div>
+
+      <!-- ② 시리얼 번호 입력 -->
+      <div class="card">
+        <div class="card-head"><h3>시리얼 번호 입력</h3><span id="fr-serial-count-badge" class="tag gray"><span id="fr-serial-count">대기 중</span></span></div>
+        <div class="card-body">
+          <textarea id="fr-serials" rows="8"
+                    style="width:100%;font-family:'Consolas',monospace;resize:vertical;"
+                    placeholder="시리얼 번호를 한 줄에 하나씩 입력하거나 콤마로 구분&#10;예:&#10;SN20260101001&#10;SN20260101002&#10;SN20260101003"
+                    oninput="if(typeof frMatchSerials==='function')frMatchSerials()"></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-sm btn-primary" type="button" onclick="if(typeof frMatchSerials==='function')frMatchSerials()">🔍 매칭 실행</button>
+            <button class="btn btn-sm btn-outline" type="button" onclick="document.getElementById('fr-serials').value='';if(typeof frMatchSerials==='function')frMatchSerials();">🧹 초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 추출 내역 (결과 영역) -->
+      <div id="fr-result-area" style="display:none;">
+        <div class="card">
+          <div class="card-head"><h3>추출 내역 — 분석 요약</h3></div>
+          <div class="card-body" id="fr-summary"></div>
+        </div>
+
+        <!-- 매칭 성공 (전폭) -->
+        <div class="card">
+          <div class="card-head"><h3>매칭 성공</h3><span class="tag green">Flash DATE와 일치</span></div>
+          <div class="tbl-wrap" style="border-radius:0;box-shadow:none;max-height:560px;width:100%;">
+            <table style="width:100%;">
+              <thead id="fr-matched-thead"></thead>
+              <tbody id="fr-matched-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 누락 시리얼 (전폭) -->
+        <div id="fr-missing-area" class="card" style="display:none;">
+          <div class="card-head"><h3>❌ 누락 시리얼</h3><span class="tag red">미일치</span></div>
+          <div class="card-body">
+            <pre id="fr-missing-list" style="font-size:0.82em;background:#fafbfc;padding:14px;border-radius:8px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ 설정 ═══════════════════ -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="page-head">
+        <div>
+          <div class="page-title">설정</div>
+          <div class="page-sub">회사 정보 · 데이터 보호 · 클라우드 연동 · 권한 관리</div>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="if(typeof saveCompanySettings==='function')saveCompanySettings();else if(typeof saveSettings==='function')saveSettings();">설정 저장</button>
+      </div>
+
+      <!-- 설정 섹션 네비게이션 -->
+      <div class="card" style="margin-bottom:14px;padding:0;">
+        <div class="card-tabs">
+          <button id="set-nav-company"  class="card-tab active" onclick="if(typeof setSettingsSection==='function')setSettingsSection('company')">회사 · 기본 정보</button>
+          <button id="set-nav-product"  class="card-tab"        onclick="if(typeof setSettingsSection==='function')setSettingsSection('product')">제품·창고 마스터</button>
+          <button id="set-nav-safety"   class="card-tab"        onclick="if(typeof setSettingsSection==='function')setSettingsSection('safety')">데이터 보호</button>
+          <button id="set-nav-cloud"    class="card-tab"        onclick="if(typeof setSettingsSection==='function')setSettingsSection('cloud')">클라우드 연동</button>
+          <button id="set-nav-perm"     class="card-tab"        onclick="if(typeof setSettingsSection==='function')setSettingsSection('perm')">권한 관리</button>
+          <button id="set-nav-setup"    class="card-tab"        onclick="if(typeof setSettingsSection==='function')setSettingsSection('setup')">셋업 마법사</button>
+        </div>
+      </div>
+
+      <!-- ─────────── 1. 회사 · 기본 정보 ─────────── -->
+      <div id="set-section-company" class="set-section">
+        <div class="card">
+          <div class="card-head"><h3>회사 정보</h3><span class="tag gray">출고지시서 출력용</span></div>
+          <div class="card-body">
+            <label>회사명</label>
+            <input id="company-name-input" type="text" placeholder="예: 바로 (주)" style="width:100%;max-width:480px;">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>출고지시서 결재 라인</h3><span class="tag blue">출고지시서 자동 채움</span></div>
+          <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div>
+              <label>출고 담당 (기본값)</label>
+              <input id="default-manager-input" type="text" placeholder="예: 홍길동" style="width:100%;">
+              <div style="font-size:0.78em;color:#888;margin-top:4px;">"담당자(출고)" 란에 자동 채움</div>
+            </div>
+            <div>
+              <label>승인자 (기본값)</label>
+              <input id="default-approver-input" type="text" placeholder="예: 김부장" style="width:100%;">
+              <div style="font-size:0.78em;color:#888;margin-top:4px;">"확인(내부)" 란에 자동 채움</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ─────────── 2. 제품 마스터 ─────────── -->
+      <div id="set-section-product" class="set-section" style="display:none;">
+      <!-- 제품 마스터 -->
+      <div class="card">
+        <div class="card-head"><h3>제품 마스터</h3><span class="tag purple">모델·용량 자동 매핑</span></div>
+        <div class="card-body">
+          <!-- 등록 폼 -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;padding:10px;background:#fafbfc;border-radius:8px;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:0.72em;color:#888;font-weight:700;">모델명 *</label>
+              <input id="pm-model" type="text" placeholder="예: TSM-DEG21C.20" style="min-width:200px;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:0.72em;color:#888;font-weight:700;">제품용량(W)</label>
+              <input id="pm-watt" type="number" step="0.1" placeholder="예: 550" style="width:100px;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:0.72em;color:#888;font-weight:700;">제조사</label>
+              <input id="pm-mfr" type="text" placeholder="예: 트리나" style="width:140px;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:0.72em;color:#888;font-weight:700;">1PLT 수량(매)</label>
+              <input id="pm-plt" type="number" placeholder="예: 31" style="width:100px;">
+            </div>
+            <button class="btn btn-success btn-sm" onclick="if(typeof saveProductMaster==='function')saveProductMaster()">등록</button>
+            <div style="flex:1;"></div>
+            <button class="btn btn-primary btn-sm" onclick="if(window.productMasterImport)productMasterImport.pickFile()" title=".xls / .xlsx / .csv 파일에서 모델명·용량·제조사·1PLT 수량을 읽어옵니다">📥 엑셀 불러오기</button>
+            <button class="btn btn-outline btn-sm" onclick="if(window.productMasterImport)productMasterImport.loadSeed()" title="제품마스터.xls (2026-08-25) 기준 내장 목록을 적재합니다">📋 기본 목록</button>
+            <button class="btn btn-danger btn-sm" onclick="if(window.productMasterImport)productMasterImport.clearAll()" title="제품 마스터 전체 삭제">🗑 전체 삭제</button>
+          </div>
+          <!-- 목록 -->
+          <div id="productMasterTableArea"><div id="productMasterTable"></div></div>
+        </div>
+      </div>
+
+      <!-- 창고 마스터 (설정에서 직접 관리 — 입고등록/재고수정 창고 목록에 반영) -->
+      <div id="warehouseMasterSettingHost"></div>
+      </div><!-- /set-section-product -->
+
+      <!-- ─────────── 3. 데이터 보호 (자동 백업·정합성·에러 로그) ─────────── -->
+      <!-- 카드들은 각 모듈이 자동 주입: autobackup-status-card / integrity-report-card / errorlog-stats-card -->
+      <div id="set-section-safety" class="set-section" style="display:none;">
+        <!-- 모듈이 여기에 카드 주입 (자동 백업·정합성 검사·에러 로그) -->
+        <div class="empty-state" id="set-safety-placeholder" style="padding:30px;text-align:center;color:#888;">
+          <div>데이터 보호 모듈 로드 중...</div>
+        </div>
+      </div>
+
+      <!-- ─────────── 4. 클라우드 연동 (Google Sheets) ─────────── -->
+      <div id="set-section-cloud" class="set-section" style="display:none;">
+        <div class="card">
+          <div class="card-head"><h3>Google Sheets 연동</h3><span class="tag blue">Apps Script</span></div>
+          <div class="card-body">
+            <label>Apps Script Web App URL</label>
+            <input id="gs-url-input" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" style="width:100%;font-family:'Consolas',monospace;font-size:0.82em;">
+            <div style="margin-top:8px;font-size:0.78em;color:#888;">스프레드시트의 Apps Script 배포 URL을 입력하세요. 자세한 설정은 아래 "동기화" 카드의 [URL 설정 마법사] 사용.</div>
+            <div style="margin-top:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:10px;border-top:1px dashed #eee;">
+              <div>
+                <label style="font-size:0.78em;color:#888;font-weight:700;">자동 동기화 간격 (분)</label>
+                <input id="auto-sync-input" type="number" min="0" value="0" style="width:140px;">
+              </div>
+              <div style="font-size:0.78em;color:#666;">0 = 비활성 / 5~10분 권장</div>
+            </div>
+          </div>
+        </div>
+        <!-- 동기화 안정화 카드 자동 주입 (syncstab-status-card) -->
+      </div>
+
+      <!-- ─────────── 5. 권한 관리 ─────────── -->
+      <div id="set-section-perm" class="set-section" style="display:none;">
+        <!-- erpAuth 가 여기에 사용자 권한 매트릭스 자동 주입 (auth-section) -->
+        <!-- ★ 2026-05-13 customer.js (cm-section) / auth_audit.js (auth-audit-section) -->
+        <!--    도 settings_tabs.js 가 여기로 이동시킴 -->
+        <div class="empty-state" id="set-perm-placeholder" style="padding:30px;text-align:center;color:#888;">
+          <div>권한 관리 모듈 로드 중...</div>
+        </div>
+      </div>
+
+      <!-- ─────────── 6. 셋업 마법사 (2026-05-13 신설) ─────────── -->
+      <div id="set-section-setup" class="set-section" style="display:none;">
+        <div class="card">
+          <div class="card-head"><h3>🎯 셋업 마법사</h3><span class="tag purple">5단계 가이드</span></div>
+          <div class="card-body">
+            <div style="font-size:0.92em;color:#555;line-height:1.6;margin-bottom:14px;">
+              ERP를 처음 사용하시나요? <strong>5단계 가이드</strong>로 빠르게 시작하세요.
+              <ul style="margin:8px 0 0 18px;padding:0;">
+                <li>1단계: 회사 정보 등록</li>
+                <li>2단계: Apps Script URL 등록 + 검증</li>
+                <li>3단계: SECRET_TOKEN 자동 생성</li>
+                <li>4단계: Gmail 발송 권한 + 테스트</li>
+                <li>5단계: Gemini API 키 등록</li>
+              </ul>
+            </div>
+            <button class="btn btn-primary" onclick="if(window.erpSetupV2&&erpSetupV2.open)erpSetupV2.open()">🚀 셋업 마법사 열기</button>
+            <div id="setup-wizard-status" style="margin-top:14px;font-size:0.84em;color:#888;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- 공통 hidden -->
+<input id="fileAttachInput" type="file" style="display:none;" onchange="if(typeof handleFileAttach==='function')handleFileAttach(event)">
+<input id="fileAttachType" type="hidden">
+
+<!-- ============ 수주 등록/수정 모달 ============ -->
+<div id="orderEditModal" class="modal">
+  <div class="modal-content" style="min-width:760px;max-width:980px;">
+    <div class="modal-head">
+      <h3 id="orderEditTitle">수주 등록</h3>
+      <button class="modal-close" onclick="closeModal('orderEditModal')">×</button>
+    </div>
+    <input id="em-row-id" type="hidden">
+    <input id="em-original-pjno" type="hidden">
+    <datalist id="em-model-list"></datalist>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+      <!-- 기본 정보 -->
+      <div><label style="font-size:0.78em;color:#666;">PJ NO *</label><input id="em-pjno" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">담당자</label><input id="em-manager" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수주일</label><input id="em-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">고객사</label><input id="em-customer" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">제품군</label><select id="em-product"><option>모듈</option><option>인버터</option><option>기타</option></select></div>
+      <div><label style="font-size:0.78em;color:#666;">제조사</label><input id="em-mfr" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">매입NO</label><input id="em-purno" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">모델명</label><input id="em-model" type="text" list="em-model-list" oninput="if(typeof onEmModelInput==='function')onEmModelInput()"></div>
+      <div><label style="font-size:0.78em;color:#666;">제품용량 (W)</label><input id="em-watt" type="number" oninput="if(typeof calcOrderTotals==='function')calcOrderTotals()"></div>
+      <div><label style="font-size:0.78em;color:#666;">수량 (매)</label><input id="em-qty" type="number" oninput="if(typeof calcOrderTotals==='function')calcOrderTotals()"></div>
+      <div><label style="font-size:0.78em;color:#666;">수주용량 (kW)</label><input id="em-kw" type="number" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">제품단가</label><input id="em-unitprice" type="number" oninput="if(typeof calcOrderTotals==='function')calcOrderTotals()"></div>
+      <div><label style="font-size:0.78em;color:#666;">수주총액</label><input id="em-total" type="number" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">VAT포함</label><input id="em-totalvat" type="number" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">매입사</label><input id="em-supplier" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">매입단가</label><input id="em-costprice" type="number" oninput="if(typeof calcOrderTotals==='function')calcOrderTotals()"></div>
+      <div><label style="font-size:0.78em;color:#666;">매입총액</label><input id="em-costtotal" type="number" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">영업이익</label><input id="em-profit" type="number" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">이익률 (%)</label><input id="em-profitrate" type="text" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">출고요청일</label><input id="em-duedate" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">사용전검사</label><input id="em-inspect" type="date"></div>
+
+      <!-- 현장 정보: 발전소명 → 납품주소 → 인수담당자 -->
+      <div><label style="font-size:0.78em;color:#666;">발전소명</label><input id="em-plant" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">납품주소</label><input id="em-address" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">인수담당자</label><input id="em-receiver-contact" type="text"></div>
+
+      <!-- 문서: 발주서 → 허가증 → FD성적서 → 인증서 (한 줄에 3개 + 인증서는 다음 줄 첫 칸) -->
+      <div><label style="font-size:0.78em;color:#666;">발주서</label><input id="em-order-doc" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">허가증</label><input id="em-permit" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">FD성적서</label><input id="em-fd" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">인증서</label><input id="em-cert" type="text"></div>
+      <div></div><div></div>
+
+      <!-- 노트: 요청사항 + 추가정보 나란히 (각 1.5열 → 3열 그리드에서 가운데 한 줄에 둘이 균등) -->
+      <div style="grid-column:span 3;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:0.78em;color:#666;">요청사항</label><textarea id="em-request" rows="3" style="width:100%;resize:vertical;"></textarea></div>
+        <div><label style="font-size:0.78em;color:#666;">추가정보</label><textarea id="em-addinfo" rows="3" style="width:100%;resize:vertical;"></textarea></div>
+      </div>
+
+      <!-- 수금조건 + 비율 반영 옆에 -->
+      <div style="grid-column:span 3;display:flex;gap:10px;align-items:end;">
+        <div style="flex:1;"><label style="font-size:0.78em;color:#666;">수금조건</label><input id="em-payterms" type="text" placeholder="예: 계약금 20% 중도금 30% 잔금 50%" style="width:100%;"></div>
+        <button class="btn btn-sm btn-outline" type="button" onclick="if(typeof applyPayTermsToRates==='function')applyPayTermsToRates()" style="white-space:nowrap;">📐 비율 반영</button>
+      </div>
+    </div>
+
+    <h4 style="margin-top:14px;">💰 결제 정보</h4>
+    <div style="display:grid;grid-template-columns:90px 80px 1fr 70px;gap:6px;align-items:center;">
+      <label>계약금</label><input id="em-deposit-rate" type="number" placeholder="%"><input id="em-deposit" type="number" placeholder="금액"><label><input id="em-deposit-paid" type="checkbox">입금</label>
+      <label>중도금1</label><input id="em-mid1-rate" type="number" placeholder="%"><input id="em-mid1" type="number" placeholder="금액"><label><input id="em-mid1-paid" type="checkbox">입금</label>
+      <label>중도금2</label><input id="em-mid2-rate" type="number" placeholder="%"><input id="em-mid2" type="number" placeholder="금액"><label><input id="em-mid2-paid" type="checkbox">입금</label>
+      <label>중도금3</label><input id="em-mid3-rate" type="number" placeholder="%"><input id="em-mid3" type="number" placeholder="금액"><label><input id="em-mid3-paid" type="checkbox">입금</label>
+      <label>잔금</label><input id="em-balance-rate" type="number" placeholder="%"><input id="em-balance" type="number" placeholder="금액"><label><input id="em-balance-paid" type="checkbox">입금</label>
+    </div>
+
+    <div style="text-align:right;margin-top:18px;">
+      <button class="btn btn-outline" onclick="closeModal('orderEditModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof saveOrderEdit==='function')saveOrderEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 수주 상세 모달 ============ -->
+<div id="orderDetailModal" class="modal">
+  <div class="modal-content" style="min-width:680px;max-width:920px;">
+    <div class="modal-head">
+      <h3 id="orderDetailTitle">수주 상세</h3>
+      <button class="modal-close" onclick="closeModal('orderDetailModal')">×</button>
+    </div>
+    <div id="orderDetailBody" style="max-height:60vh;overflow-y:auto;"></div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:14px;gap:8px;">
+      <button id="orderDetailDeliveryBtn" class="btn btn-primary" onclick="if(typeof openDeliveryFromDetail==='function')openDeliveryFromDetail()">🚚 출고지시서 생성</button>
+      <button class="btn btn-outline" onclick="closeModal('orderDetailModal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 출고지시서 폼 모달 ============ -->
+<div id="deliveryOrderModal" class="modal">
+  <div class="modal-content" style="min-width:720px;max-width:920px;">
+    <div class="modal-head">
+      <h3>출고지시서 작성</h3>
+      <button class="modal-close" onclick="closeModal('deliveryOrderModal')">×</button>
+    </div>
+    <input id="do-row-id" type="hidden">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+      <div><label style="font-size:0.78em;color:#666;">지시서 번호</label><input id="do-no" type="text" readonly></div>
+      <div><label style="font-size:0.78em;color:#666;">출고일</label><input id="do-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">PJ NO</label><input id="do-pjno" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수신처</label><input id="do-receiver" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">발전소명</label><input id="do-plant" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">제조사</label><input id="do-mfr" type="text"></div>
+      <div style="grid-column:span 3;"><label style="font-size:0.78em;color:#666;">납품주소</label><input id="do-address" type="text"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">모델명</label><input id="do-model" type="text" oninput="if(typeof updateDoQtyBreakdown==='function')updateDoQtyBreakdown()"></div>
+      <div><label style="font-size:0.78em;color:#666;">제품용량(W)</label><input id="do-watt" type="number"></div>
+      <div><label style="font-size:0.78em;color:#666;">수량(매)</label><input id="do-qty" type="number" oninput="if(typeof updateDoQtyBreakdown==='function')updateDoQtyBreakdown()"></div>
+      <div><label style="font-size:0.78em;color:#666;">FOC</label><input id="do-foc" type="text" oninput="if(typeof updateDoQtyBreakdown==='function')updateDoQtyBreakdown()"></div>
+      <div><label style="font-size:0.78em;color:#666;">창고</label><input id="do-warehouse" type="text"></div>
+      <div style="grid-column:span 3;">
+        <label style="font-size:0.78em;color:#666;">팔레트 구성 <span style="font-size:0.85em;color:#888;font-weight:400;">(모델·수량 입력 시 자동 계산)</span></label>
+        <div id="do-qty-breakdown" style="display:none;padding:8px 12px;border:1px solid #1565c0;border-radius:8px;background:#f0f8ff;color:#1565c0;font-weight:600;font-size:0.9em;min-height:34px;line-height:1.5;"></div>
+      </div>
+      <div><label style="font-size:0.78em;color:#666;">차량</label><input id="do-vehicle" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">현장담당</label><input id="do-site-mgr" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">출고담당</label><input id="do-manager" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">승인자</label><input id="do-approver" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">당사</label><input id="do-company" type="text"></div>
+      <div style="grid-column:span 3;"><label style="font-size:0.78em;color:#666;">비고</label><textarea id="do-remarks" rows="2"></textarea></div>
+    </div>
+    <div style="text-align:right;margin-top:18px;">
+      <button class="btn btn-outline" onclick="closeModal('deliveryOrderModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof createDeliveryOrder==='function')createDeliveryOrder()">📄 생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 빠른 출고 모달 ============ -->
+<div id="quickShipModal" class="modal">
+  <div class="modal-content" style="min-width:480px;max-width:600px;">
+    <div class="modal-head">
+      <h3>빠른 출고 등록</h3>
+      <button class="modal-close" onclick="closeModal('quickShipModal')">×</button>
+    </div>
+    <input id="qship-rowid" type="hidden">
+    <div id="qship-info" style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:12px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label style="font-size:0.78em;color:#666;">출고일</label><input id="qship-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">출고수량(매)</label><input id="qship-qty" type="number"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">비고</label><input id="qship-note" type="text"></div>
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('quickShipModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof confirmQuickShip==='function')confirmQuickShip()">🚚 출고</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 분할출고 상세 모달 ============ -->
+<div id="splitDeliveryModal" class="modal">
+  <div class="modal-content" style="display:inline-block;width:auto;max-width:min(900px,92vw);padding:18px 20px;">
+    <div class="modal-head">
+      <h3>분할출고 내역</h3>
+      <button class="modal-close" onclick="closeModal('splitDeliveryModal')">×</button>
+    </div>
+    <div id="splitDeliveryInfoDetail" style="display:grid;grid-template-columns:repeat(4,minmax(120px,auto));gap:20px;background:#f8fafd;border:1px solid #eef0f4;border-radius:10px;padding:12px 16px;margin-bottom:12px;"></div>
+    <div id="splitDeliveryListDetail"></div>
+    <div style="text-align:right;margin-top:12px;">
+      <button class="btn btn-outline" onclick="closeModal('splitDeliveryModal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 분할출고 등록 모달 ============ -->
+<div id="splitRegisterModal" class="modal">
+  <div class="modal-content" style="min-width:520px;max-width:640px;">
+    <div class="modal-head">
+      <h3>분할출고 등록</h3>
+      <button class="modal-close" onclick="closeModal('splitRegisterModal')">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">PJ NO</label><input id="sreg-modal-pjno" type="text" oninput="if(typeof onSregPjNoInput==='function')onSregPjNoInput()"></div>
+      <div><label style="font-size:0.78em;color:#666;">모델명</label><input id="sreg-modal-model" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수주수량(매)</label><input id="sreg-modal-qty" type="number"></div>
+    </div>
+    <div id="sreg-modal-info" style="display:none;border-radius:8px;padding:10px;margin-top:10px;font-size:0.9em;"></div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('splitRegisterModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof confirmSplitRegister==='function')confirmSplitRegister()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 입고 등록 모달 ============ -->
+<div id="inboundModal" class="modal">
+  <div class="modal-content" style="min-width:520px;max-width:680px;">
+    <div class="modal-head">
+      <h3>입고 등록</h3>
+      <button class="modal-close" onclick="closeModal('inboundModal')">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label style="font-size:0.78em;color:#666;">입고일 *</label><input id="ib-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">제조사</label><input id="ib-mfr" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">모델명 *</label><input id="ib-model" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수량(매) *</label><input id="ib-qty" type="number" oninput="if(typeof recalcInbound==='function')recalcInbound()"></div>
+      <div><label style="font-size:0.78em;color:#666;">출력(W/매)</label><input id="ib-watt" type="number" step="0.1" placeholder="예: 550" oninput="if(typeof recalcInbound==='function')recalcInbound()"></div>
+      <div><label style="font-size:0.78em;color:#666;">매입단가 (원/Wp)</label><input id="ib-unit-price" type="number" step="0.01" placeholder="원/Wp" oninput="if(typeof recalcInbound==='function')recalcInbound()"></div>
+      <div style="grid-column:span 2;background:#f5f7fa;border-radius:6px;padding:8px 10px;">
+        <label style="font-size:0.78em;color:#666;font-weight:700;">💰 매입금액 (자동 계산)</label>
+        <div id="ib-total-amount-disp" style="font-size:1.05em;font-weight:800;color:#e65100;margin-top:2px;">- 원</div>
+        <div style="font-size:0.72em;color:#999;margin-top:2px;">수량 × W × 단가</div>
+      </div>
+      <div><label style="font-size:0.78em;color:#666;">B/L 번호</label><input id="ib-bl" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">창고</label>
+        <select id="ib-warehouse-sel" onchange="if(typeof onWarehouseSelectChange==='function')onWarehouseSelectChange('ib')"></select>
+        <input id="ib-warehouse" type="text" placeholder="창고명 직접 입력" style="display:none;margin-top:4px;"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">PJ NO</label><input id="ib-pjno" type="text"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">비고</label><textarea id="ib-remarks" rows="2"></textarea></div>
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('inboundModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof saveInbound==='function')saveInbound()">입고 등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 출고 등록 모달 ============ -->
+<div id="outboundModal" class="modal">
+  <div class="modal-content" style="min-width:480px;max-width:620px;">
+    <div class="modal-head">
+      <h3>출고 등록</h3>
+      <button class="modal-close" onclick="closeModal('outboundModal')">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label style="font-size:0.78em;color:#666;">출고일 *</label><input id="ob-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">모델명 *</label><input id="ob-model" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수량(매) *</label><input id="ob-qty" type="number"></div>
+      <div><label style="font-size:0.78em;color:#666;">PJ NO</label><input id="ob-pjno" type="text"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">비고</label><textarea id="ob-remarks" rows="2"></textarea></div>
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('outboundModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof saveOutbound==='function')saveOutbound()">출고 등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 입출고 수정 모달 ============ -->
+<div id="invEditModal" class="modal">
+  <div class="modal-content" style="min-width:560px;max-width:720px;">
+    <div class="modal-head">
+      <h3 id="invEditTitle">입출고 수정</h3>
+      <button class="modal-close" onclick="closeModal('invEditModal')">×</button>
+    </div>
+    <input id="inv-edit-id" type="hidden">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><label style="font-size:0.78em;color:#666;">유형</label><select id="inv-edit-type"><option value="입고">입고</option><option value="출고">출고</option></select></div>
+      <div><label style="font-size:0.78em;color:#666;">날짜 *</label><input id="inv-edit-date" type="date"></div>
+      <div><label style="font-size:0.78em;color:#666;">제조사</label><input id="inv-edit-mfr" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">모델명 *</label><input id="inv-edit-model" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">수량(매) *</label><input id="inv-edit-qty" type="number" oninput="if(typeof recalcInvEdit==='function')recalcInvEdit()"></div>
+      <div><label style="font-size:0.78em;color:#666;">출력(W/매)</label><input id="inv-edit-watt" type="number" step="0.1" oninput="if(typeof recalcInvEdit==='function')recalcInvEdit()"></div>
+      <div><label style="font-size:0.78em;color:#666;">매입단가 (원/Wp)</label><input id="inv-edit-unit-price" type="number" step="0.01" oninput="if(typeof recalcInvEdit==='function')recalcInvEdit()"></div>
+      <div style="background:#f5f7fa;border-radius:6px;padding:8px 10px;">
+        <label style="font-size:0.78em;color:#666;font-weight:700;">💰 매입금액 (자동)</label>
+        <div id="inv-edit-total-amount-disp" style="font-size:1.0em;font-weight:800;color:#e65100;margin-top:2px;">- 원</div>
+      </div>
+      <div><label style="font-size:0.78em;color:#666;">B/L 번호</label><input id="inv-edit-bl" type="text"></div>
+      <div><label style="font-size:0.78em;color:#666;">창고</label>
+        <select id="inv-edit-warehouse-sel" onchange="if(typeof onWarehouseSelectChange==='function')onWarehouseSelectChange('inv-edit')"></select>
+        <input id="inv-edit-warehouse" type="text" placeholder="창고명 직접 입력" style="display:none;margin-top:4px;"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">PJ NO</label><input id="inv-edit-pjno" type="text"></div>
+      <div style="grid-column:span 2;"><label style="font-size:0.78em;color:#666;">비고</label><textarea id="inv-edit-remarks" rows="2"></textarea></div>
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('invEditModal')">취소</button>
+      <button class="btn btn-success" onclick="if(typeof saveEditInventory==='function')saveEditInventory()">수정</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 모델별 출고 내역 모달 (재고관리에서 사용) ============ -->
+<div id="modelOutboundModal" class="modal">
+  <div class="modal-content" style="min-width:680px;max-width:880px;">
+    <div class="modal-head">
+      <h3 id="modelOutboundTitle">출고 내역</h3>
+      <button class="modal-close" onclick="closeModal('modelOutboundModal')">×</button>
+    </div>
+    <div id="modelOutboundStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
+    <div id="modelOutboundTable" style="max-height:55vh;overflow-y:auto;"></div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-outline" onclick="closeModal('modelOutboundModal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JS 모듈 (55개 + 탭 6개) — 의존성 순서대로 로드
+     ============================================================ -->
+
+<!-- [1] 핵심 인프라 -->
+<script src="영업관리_ERP_safety.js"></script>
+<script src="영업관리_ERP_data.js"></script>
+<script src="영업관리_ERP_utils.js"></script>
+<script src="영업관리_ERP_validation.js"></script>
+<script src="영업관리_ERP_auth.js"></script>
+<script src="영업관리_ERP_auth_audit.js"></script>
+<script src="영업관리_ERP_migrate.js"></script>
+<script src="영업관리_ERP_multitab.js"></script>
+<script src="영업관리_ERP_sync.js"></script>
+<script src="영업관리_ERP_notify.js"></script>
+
+<!-- [2] 도메인 모듈 -->
+<script src="영업관리_ERP_customer.js"></script>
+<script src="영업관리_ERP_vendor.js"></script>
+<script src="영업관리_ERP_credit.js"></script>
+<script src="영업관리_ERP_aging.js"></script>
+<script src="영업관리_ERP_atp.js"></script>
+<script src="영업관리_ERP_incoming.js"></script>
+<script src="영업관리_ERP_inventory_lots.js"></script>
+<script src="영업관리_ERP_purchase.js"></script>
+<script src="영업관리_ERP_purchase_price.js"></script>
+<script src="영업관리_ERP_quotation.js"></script>
+<script src="영업관리_ERP_vendor_quotes.js"></script>
+<script src="영업관리_ERP_taxinvoice.js"></script>
+<script src="영업관리_ERP_returns.js"></script>
+<script src="영업관리_ERP_sn.js"></script>
+<script src="영업관리_ERP_dispatch.js"></script>
+<script src="영업관리_ERP_dispatch_ext.js"></script>
+<script src="영업관리_ERP_dispatch_link.js"></script>
+<script src="영업관리_ERP_forecast.js"></script>
+<script src="영업관리_ERP_calendar.js"></script>
+<script src="영업관리_ERP_search.js"></script>
+<script src="영업관리_ERP_mobile.js"></script>
+<script src="영업관리_ERP_calculator.js"></script>
+<script src="영업관리_ERP_ai_chat.js"></script>
+<script src="영업관리_ERP_contract_ocr.js"></script>
+<script src="영업관리_ERP_purchase_ocr.js"></script>
+<script src="영업관리_ERP_market_rate.js"></script>
+<script src="영업관리_ERP_excel_hub.js"></script>
+<script src="영업관리_ERP_backup_tools.js"></script>
+<script src="영업관리_ERP_auto_backup.js"></script>
+<script src="영업관리_ERP_sync_stability.js"></script>
+<script src="영업관리_ERP_data_integrity.js"></script>
+<script src="영업관리_ERP_error_logger.js"></script>
+<script src="영업관리_ERP_unified_calendar.js"></script>
+<script src="영업관리_ERP_notification_center.js"></script>
+<script src="영업관리_ERP_mobile_sheet.js"></script>
+<script src="영업관리_ERP_toptools.js"></script>
+<script src="영업관리_ERP_settings_tabs.js"></script>
+<script src="영업관리_ERP_ops.js"></script>
+<script src="영업관리_ERP_feedback.js"></script>
+<script src="영업관리_ERP_setup_helper.js"></script>
+<script src="영업관리_ERP_setup_v2.js"></script>
+<script src="영업관리_ERP_tests.js"></script>
+
+<!-- [2.5] 탭 렌더링 (수주/출고/재고/영업실적/전수조사서/설정) -->
+<script src="영업관리_ERP_tabs/수주현황.js"></script>
+<script src="영업관리_ERP_tabs/출고지시서.js"></script>
+<script src="영업관리_ERP_tabs/재고관리.js"></script>
+<script src="영업관리_ERP_tabs/영업실적.js"></script>
+<script src="영업관리_ERP_tabs/전수조사서.js"></script>
+<script src="영업관리_ERP_tabs/설정.js"></script>
+<script src="영업관리_ERP_tabs/출고스케줄.js"></script>
+<script src="영업관리_ERP_tabs/제품마스터_기본데이터.js"></script>
+<script src="영업관리_ERP_tabs/제품마스터_가져오기.js"></script>
+<script src="영업관리_ERP_tabs/창고마스터_설정.js"></script>
+
+<!-- [3] 창고 사업 4개 + 통합 -->
+<script src="영업관리_ERP_warehouse_master.js"></script>
+<script src="영업관리_ERP_thirdparty.js"></script>
+<script src="영업관리_ERP_warehouse_rental.js"></script>
+<script src="영업관리_ERP_logistics.js"></script>
+<script src="영업관리_ERP_warehouse_dashboard.js"></script>
+<script src="영업관리_ERP_warehouse_tabs.js"></script>
+
+<!-- [3.5] 원가관리 (수입 물류비) -->
+<script src="영업관리_ERP_cost_mgmt.js"></script>
+
+<!-- [4] UI 보강 -->
+<script src="영업관리_ERP_dashboard_v2.js"></script>
+<script src="영업관리_ERP_tools_layout.js"></script>
+<script src="영업관리_ERP_toolbar.js"></script>
+<script src="영업관리_ERP_fab_menu.js"></script>
+<script src="영업관리_ERP_uplift.js"></script>
+<script src="영업관리_ERP_responsive.js"></script>
+<!-- ★ 2026-05-13 사용자 요청으로 비활성화 — 튜토리얼 도구 삭제 -->
+<!-- <script src="영업관리_ERP_tutorial.js"></script> -->
+<!-- ★ 2026-05-13 즉각 반영 시스템 -->
+<script src="영업관리_ERP_live_refresh.js"></script>
+<!-- ★ 2026-05-13 다중 사용자 지원 (Phase 4) -->
+<script src="영업관리_ERP_multiuser.js"></script>
+<!-- ★ 2026-05-13 보안 강화 — 로그인 게이트 + 사용자 관리 + 암호화 저장 -->
+<script src="영업관리_ERP_auth_gate.js"></script>
+<script src="영업관리_ERP_user_admin.js"></script>
+<script src="영업관리_ERP_secure_storage.js"></script>
+<!-- ★ 2026-05-13 모바일 바코드 스캐너 (HTTPS 환경 필수) -->
+<script src="영업관리_ERP_barcode_scanner.js"></script>
+
+<!-- [5] 부트 -->
+<script>
+(function() {
+  function boot() {
+    try { if (typeof loadAllLocal === 'function') loadAllLocal(); } catch(e) { console.error('[boot] loadAllLocal 실패:', e); }
+    try { if (typeof renderDashboard === 'function') renderDashboard(); } catch(e) { console.error('[boot] renderDashboard 실패:', e); }
+    try { if (typeof renderProductMasterTable === 'function') renderProductMasterTable(); } catch(e) {}
+
+    // ── 재고관리 / 입고관리 탭에서 구매이력 FAB 숨김 ──
+    (function hookPurchaseFabVisibility(){
+      function applyFabVisibility(){
+        const active = document.querySelector('.tab-panel.active');
+        const id = active ? active.id : '';
+        const hide = (id === 'tab-inventory' || id === 'tab-stock');
+        const fab = document.getElementById('erp-pur-fab');
+        if (fab) fab.style.display = hide ? 'none' : '';
+      }
+      // showTab 후크 — 탭 전환 시 자동 적용
+      function hookOnce(){
+        if (typeof window.showTab !== 'function') { setTimeout(hookOnce, 300); return; }
+        if (window.showTab.__purchFabHidden) return;
+        const orig = window.showTab;
+        window.showTab = function(id){
+          const r = orig.apply(this, arguments);
+          setTimeout(applyFabVisibility, 30);
+          return r;
+        };
+        window.showTab.__purchFabHidden = true;
+      }
+      hookOnce();
+      setTimeout(applyFabVisibility, 1200);  // 초기 적용
+    })();
+
+    // ── ESC 키로 가장 위에 열려있는 모달 닫기 ──
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      // 1) 표준 .modal.open 처리
+      const opens = document.querySelectorAll('.modal.open');
+      if (opens.length) {
+        // 가장 마지막에 열린 모달부터 닫기
+        const last = opens[opens.length - 1];
+        last.classList.remove('open');
+        e.preventDefault();
+        return;
+      }
+      // 2) 동적 생성 모달 (signModal, doReceiptSelectModal 등) 처리
+      ['signModal','doReceiptSelectModal','receiptSelectModal','receiptQtyModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && (el.style.display === 'flex' || el.style.display === 'block' || el.classList.contains('open'))) {
+          el.classList.remove('open');
+          if (el.style.display) el.style.display = 'none';
+        }
+      });
+      // 3) 워크스페이스/도구 모달 (erp-* prefix) 처리
+      document.querySelectorAll('[id^="erp-"][id$="-modal"]').forEach(m => {
+        if (m.classList.contains('open')) {
+          m.classList.remove('open');
+        }
+      });
+    });
+
+    console.log('[ERP] 부트 완료 · ESC 모달 닫기 활성');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
+</body>
+</html>
